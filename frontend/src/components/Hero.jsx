@@ -21,8 +21,7 @@ const Hero = () => {
       id="hero"
       className="relative min-h-screen flex items-center justify-center px-6 md:px-10"
     >
-      {/* Subtle nebula wash */}
-      <div className="absolute inset-0 nebula-bg pointer-events-none" style={{ zIndex: 0 }} />
+      {/* Starfield (Universe + nebula) provides the cosmic backdrop. Hero adds only the rings. */}
 
       {/* Faint concentric rings */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 2 }}>
