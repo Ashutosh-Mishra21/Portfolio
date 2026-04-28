@@ -108,29 +108,6 @@ const Galaxy = () => {
           ctx.arc(x, y, s.size, 0, Math.PI * 2);
           ctx.fill();
         }
-
-        // Dust lanes — subtle scattered patches only on outer arms (no continuous lines, no holes near core)
-        ctx.save();
-        ctx.globalCompositeOperation = "multiply";
-        for (let arm = 0; arm < armCount; arm++) {
-          for (let k = 0; k < 35; k++) {
-            // Only on the outer 60% of the disk (avoid darkening the bright core)
-            const r = baseR * (0.45 + Math.random() * 0.50);
-            const angleJitter = (Math.random() - 0.5) * 0.14;
-            const a = (arm * Math.PI * 2) / armCount + r * 0.014 + rotation + angleJitter;
-            const px = cx + Math.cos(a) * r;
-            const py = cy + Math.sin(a) * r * 0.42;
-            const dustR = baseR * (0.008 + Math.random() * 0.018);
-            const dg = ctx.createRadialGradient(px, py, 0, px, py, dustR * 4);
-            dg.addColorStop(0, "rgba(8, 4, 20, 0.18)");
-            dg.addColorStop(1, "rgba(0, 0, 0, 0)");
-            ctx.fillStyle = dg;
-            ctx.beginPath();
-            ctx.ellipse(px, py, dustR * 4, dustR * 1.4, a, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        ctx.restore();
       }
       raf = requestAnimationFrame(draw);
     };
