@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  * Cross-section highlight bus. Any section can call setHighlight({ source, ... ids })
@@ -57,8 +57,14 @@ export const HighlightProvider = ({ children }) => {
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
+  // Memoize context value to avoid re-rendering all consumers on every parent render
+  const value = useMemo(
+    () => ({ highlight, setHighlight, clear, isHighlighted }),
+    [highlight, setHighlight, clear, isHighlighted]
+  );
+
   return (
-    <HighlightContext.Provider value={{ highlight, setHighlight, clear, isHighlighted }}>
+    <HighlightContext.Provider value={value}>
       {children}
     </HighlightContext.Provider>
   );

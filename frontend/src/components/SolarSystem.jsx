@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { experiences } from "../mock/mock";
 import { useHighlight } from "../context/HighlightContext";
-import { X, MapPin, ChevronRight } from "lucide-react";
+import ExperiencePanel from "./ExperiencePanel";
+import CentralSun from "./CentralSun";
 
-/* -------- Planet visual: realistic gradient + bands + atmosphere + highlight -------- */
-const PlanetVisual = ({ p, size, animated = false }) => (
+/* -------- Realistic planet visual -------- */
+export const PlanetVisual = ({ p, size, animated = false }) => (
   <div
     className={`relative rounded-full overflow-hidden ${animated ? "animate-spin-slow" : ""}`}
     style={{
@@ -19,7 +20,6 @@ const PlanetVisual = ({ p, size, animated = false }) => (
       `
     }}
   >
-    {/* Surface bands */}
     <div
       className="absolute inset-0 opacity-40 mix-blend-overlay"
       style={{
@@ -31,7 +31,6 @@ const PlanetVisual = ({ p, size, animated = false }) => (
         )`
       }}
     />
-    {/* Cloud / continent texture */}
     <div
       className="absolute inset-0 opacity-25 mix-blend-screen"
       style={{
@@ -42,14 +41,10 @@ const PlanetVisual = ({ p, size, animated = false }) => (
         `
       }}
     />
-    {/* Atmospheric rim */}
     <div
       className="absolute inset-0 rounded-full pointer-events-none"
-      style={{
-        boxShadow: `inset 0 0 ${size * 0.25}px ${size * 0.04}px ${p.color}55`
-      }}
+      style={{ boxShadow: `inset 0 0 ${size * 0.25}px ${size * 0.04}px ${p.color}55` }}
     />
-    {/* Specular highlight */}
     <div
       className="absolute rounded-full pointer-events-none"
       style={{
@@ -64,16 +59,17 @@ const PlanetVisual = ({ p, size, animated = false }) => (
   </div>
 );
 
-/* -------- Moons (unchanged behaviour) -------- */
-const Moons = ({ planet, planetSize, paused = false, scale = 1 }) => {
+/* -------- Moons orbiting a planet -------- */
+export const Moons = ({ planet, planetSize, paused = false, scale = 1 }) => {
   const moons = planet.moons || [];
+  const keyFor = (i) => `${planet.id}-moon-${i}`;
   return (
     <>
       {moons.map((m, i) => {
         const radius = planetSize * m.distance;
         return (
           <div
-            key={i}
+            key={keyFor(i)}
             className="absolute top-1/2 left-1/2 pointer-events-none"
             style={{
               width: 0,
@@ -98,7 +94,7 @@ const Moons = ({ planet, planetSize, paused = false, scale = 1 }) => {
       })}
       {moons.map((m, i) => (
         <div
-          key={`ring-${i}`}
+          key={`${keyFor(i)}-ring`}
           className="absolute top-1/2 left-1/2 pointer-events-none rounded-full border border-white/[0.06]"
           style={{
             width: planetSize * m.distance * 2,
@@ -112,7 +108,7 @@ const Moons = ({ planet, planetSize, paused = false, scale = 1 }) => {
 };
 
 /* -------- Saturn-like ring -------- */
-const SaturnRing = ({ p, planetSize }) => (
+export const SaturnRing = ({ p, planetSize }) => (
   <div
     className="absolute top-1/2 left-1/2 pointer-events-none"
     style={{
@@ -128,21 +124,83 @@ const SaturnRing = ({ p, planetSize }) => (
   />
 );
 
+/* -------- Single experience planet (orbiting + moons + tooltip) -------- */
+const ExperiencePlanet = ({ p, index, total, hovered, paused, isLitFromContext, onHover, onLeave, onClick }) => {
+  const isHovered = hovered === p.id;
+  return (
+    <div
+      className="absolute top-1/2 left-1/2"
+      style={{
+        width: 0, height: 0,
+        animation: `orbit ${p.speed}s linear infinite`,
+        animationDelay: `${-p.speed * (index / total + 0.12 * index)}s`,
+        animationPlayState: paused ? "paused" : "running",
+        ['--orbit-radius']: `${p.orbit}px`,
+      }}
+    >
+      <div className="absolute -translate-x-1/2 -translate-y-1/2">
+        <Moons planet={p} planetSize={p.size * 2} paused={paused} />
+
+        <button
+          onClick={() => onClick(p)}
+          onMouseEnter={() => onHover(p.id)}
+          onMouseLeave={onLeave}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
+          style={{
+            transform: `translate(-50%, -50%) scale(${isHovered || isLitFromContext ? 1.3 : 1})`,
+          }}
+        >
+          {isLitFromContext && (
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
+              style={{
+                width: p.size * 4,
+                height: p.size * 4,
+                boxShadow: `0 0 30px 6px rgba(255,210,150,0.55)`,
+                border: "1px solid rgba(255,210,150,0.5)"
+              }}
+            />
+          )}
+
+          <PlanetVisual p={p} size={p.size * 2} />
+          {p.hasRing && <SaturnRing p={p} planetSize={p.size * 2} />}
+
+          {isHovered && (
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 whitespace-nowrap pointer-events-none">
+              <div className="font-display text-sm text-white">{p.role}</div>
+              <div className="font-mono text-[10px] tracking-widest uppercase text-amber-200/80 text-center mt-0.5">
+                {p.company}
+              </div>
+              <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-white/50 text-center mt-0.5">
+                {p.duration}
+              </div>
+            </div>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* -------- Main component -------- */
 const SolarSystem = () => {
   const [selected, setSelected] = useState(null);
   const [hovered, setHovered] = useState(null);
   const [paused, setPaused] = useState(false);
-  const wrapRef = useRef(null);
   const [scale, setScale] = useState(1);
+  const wrapRef = useRef(null);
   const { setHighlight, isHighlighted } = useHighlight();
 
+  // Pause planet motion while a panel is open
+  useEffect(() => { setPaused(Boolean(selected)); }, [selected]);
+
+  // Responsive scale
   useEffect(() => {
     const onResize = () => {
       const maxOrbit = Math.max(...experiences.map((p) => p.orbit));
       const needed = (maxOrbit + 80) * 2;
-      const vw = window.innerWidth;
       const containerH = Math.min(window.innerHeight * 0.78, 900);
-      const fit = Math.min(vw / needed, containerH / needed, 1.1);
+      const fit = Math.min(window.innerWidth / needed, containerH / needed, 1.1);
       setScale(Math.max(0.5, fit));
     };
     onResize();
@@ -150,39 +208,34 @@ const SolarSystem = () => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  useEffect(() => {
-    if (selected) setPaused(true);
-    else setPaused(false);
-  }, [selected]);
+  const handlePlanetClick = useCallback(
+    (e) => {
+      setSelected(e.id);
+      setHighlight({
+        source: "experience",
+        id: e.id,
+        experiences: [e.id],
+        projects: e.relatedProjects || [],
+        skills: e.relatedSkills || []
+      });
+    },
+    [setHighlight]
+  );
 
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") setSelected(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  const closePanel = useCallback(() => setSelected(null), []);
 
-  const exp = selected ? experiences.find((p) => p.id === selected) : null;
-
-  const handlePlanetClick = (e) => {
-    setSelected(e.id);
-    setHighlight({
-      source: "experience",
-      id: e.id,
-      experiences: [e.id],
-      projects: e.relatedProjects || [],
-      skills: e.relatedSkills || []
-    });
-  };
-
-  const jumpToProjects = () => {
+  const jumpToProjects = useCallback(() => {
     setSelected(null);
     setTimeout(() => {
       const el = document.getElementById("projects");
       if (el) el.scrollIntoView({ behavior: "smooth" });
     }, 100);
-  };
+  }, []);
+
+  const handleHover = useCallback((id) => setHovered(id), []);
+  const handleLeave = useCallback(() => setHovered(null), []);
+
+  const exp = selected ? experiences.find((p) => p.id === selected) : null;
 
   return (
     <section id="solar" className="relative min-h-screen py-20 overflow-hidden">
@@ -205,7 +258,6 @@ const SolarSystem = () => {
         </div>
       </div>
 
-      {/* System canvas */}
       <div
         ref={wrapRef}
         className="relative mx-auto flex items-center justify-center"
@@ -213,14 +265,8 @@ const SolarSystem = () => {
       >
         <div
           className="relative"
-          style={{
-            transform: `scale(${scale})`,
-            transformOrigin: "center center",
-            width: 0,
-            height: 0
-          }}
+          style={{ transform: `scale(${scale})`, transformOrigin: "center center", width: 0, height: 0 }}
         >
-          {/* Orbit rings */}
           {experiences.map((p, i) => (
             <div
               key={`orbit-${p.id}`}
@@ -233,218 +279,33 @@ const SolarSystem = () => {
             />
           ))}
 
-          {/* Sun -> jump to skills */}
-          <button
-            onClick={() => {
-              const el = document.getElementById("sun");
-              if (el) el.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 group"
-            aria-label="Navigate to skills"
-          >
-            <div
-              className="absolute rounded-full animate-pulse-glow"
-              style={{
-                width: 260, height: 260,
-                left: -130, top: -130,
-                background: "radial-gradient(circle, rgba(255,200,130,0.35) 0%, rgba(255,140,80,0.12) 35%, transparent 70%)",
-                filter: "blur(28px)"
-              }}
+          <CentralSun />
+
+          {experiences.map((p, i) => (
+            <ExperiencePlanet
+              key={p.id}
+              p={p}
+              index={i}
+              total={experiences.length}
+              hovered={hovered}
+              paused={paused}
+              isLitFromContext={isHighlighted("experience", p.id)}
+              onHover={handleHover}
+              onLeave={handleLeave}
+              onClick={handlePlanetClick}
             />
-            <div
-              className="absolute rounded-full"
-              style={{
-                width: 160, height: 160,
-                left: -80, top: -80,
-                background: "radial-gradient(circle, rgba(255,220,160,0.5), transparent 65%)",
-                filter: "blur(14px)"
-              }}
-            />
-            <div
-              className="w-[90px] h-[90px] rounded-full relative"
-              style={{
-                background: "radial-gradient(circle at 35% 35%, #fff0cc 0%, #ffc56a 35%, #f5883a 70%, #c95a1c 100%)",
-                boxShadow: "0 0 60px rgba(255,180,100,0.65), 0 0 140px rgba(255,140,80,0.35), inset -10px -14px 30px rgba(120,40,0,0.5), inset 6px 6px 20px rgba(255,235,180,0.5)"
-              }}
-            />
-            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-3 font-mono text-[10px] tracking-[0.3em] uppercase text-amber-200/70 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-              Skills →
-            </span>
-          </button>
-
-          {/* Planets + moons */}
-          {experiences.map((p, i) => {
-            const litFromContext = isHighlighted("experience", p.id);
-            return (
-              <div
-                key={p.id}
-                className="absolute top-1/2 left-1/2"
-                style={{
-                  width: 0, height: 0,
-                  animation: `orbit ${p.speed}s linear infinite`,
-                  animationDelay: `${-p.speed * (i / experiences.length + 0.12 * i)}s`,
-                  animationPlayState: paused ? "paused" : "running",
-                  ['--orbit-radius']: `${p.orbit}px`,
-                }}
-              >
-                <div className="absolute -translate-x-1/2 -translate-y-1/2">
-                  <Moons planet={p} planetSize={p.size * 2} paused={paused} />
-
-                  <button
-                    onClick={() => handlePlanetClick(p)}
-                    onMouseEnter={() => setHovered(p.id)}
-                    onMouseLeave={() => setHovered(null)}
-                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
-                    style={{
-                      transform: `translate(-50%, -50%) scale(${hovered === p.id || litFromContext ? 1.3 : 1})`,
-                    }}
-                  >
-                    {/* Highlight halo when externally lit */}
-                    {litFromContext && (
-                      <div
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
-                        style={{
-                          width: p.size * 4,
-                          height: p.size * 4,
-                          boxShadow: `0 0 30px 6px rgba(255,210,150,0.55)`,
-                          border: "1px solid rgba(255,210,150,0.5)"
-                        }}
-                      />
-                    )}
-
-                    <PlanetVisual p={p} size={p.size * 2} />
-                    {p.hasRing && <SaturnRing p={p} planetSize={p.size * 2} />}
-
-                    {hovered === p.id && (
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 whitespace-nowrap pointer-events-none">
-                        <div className="font-display text-sm text-white">{p.role}</div>
-                        <div className="font-mono text-[10px] tracking-widest uppercase text-amber-200/80 text-center mt-0.5">
-                          {p.company}
-                        </div>
-                        <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-white/50 text-center mt-0.5">
-                          {p.duration}
-                        </div>
-                      </div>
-                    )}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          ))}
         </div>
       </div>
 
-      {/* Experience panel */}
-      {exp && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-4 md:p-8" style={{ pointerEvents: "none" }}>
-          <div
-            className="absolute inset-0 bg-black/75 backdrop-blur-md animate-fade-up"
-            style={{ pointerEvents: "auto" }}
-            onClick={() => setSelected(null)}
-          />
-          <div
-            className="relative w-full max-w-6xl grid md:grid-cols-[1.1fr_1.1fr] gap-6 md:gap-10 items-center animate-fade-up"
-            style={{ pointerEvents: "auto" }}
-          >
-            {/* Planet preview - large */}
-            <div className="hidden md:flex items-center justify-center py-10 relative h-[560px]">
-              <div
-                className="absolute rounded-full animate-pulse-glow"
-                style={{
-                  width: 520, height: 520,
-                  background: `radial-gradient(circle, ${exp.color}33 0%, ${exp.color}11 40%, transparent 70%)`,
-                  filter: "blur(40px)"
-                }}
-              />
-              <div className="relative">
-                <div className="absolute top-1/2 left-1/2">
-                  <Moons planet={exp} planetSize={340} paused={false} scale={0.7} />
-                </div>
-                <PlanetVisual p={exp} size={340} animated />
-                {exp.hasRing && <SaturnRing p={exp} planetSize={340} />}
-              </div>
-            </div>
-
-            {/* Info card - experience content */}
-            <div className="bg-[#0a0520]/95 border border-white/10 rounded-2xl p-8 md:p-10 shadow-2xl relative">
-              <button
-                onClick={() => setSelected(null)}
-                className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition-colors"
-                aria-label="Close"
-              >
-                <X size={16} />
-              </button>
-
-              <div className="md:hidden flex justify-center mb-6">
-                <PlanetVisual p={exp} size={140} animated />
-              </div>
-
-              <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-amber-200/70">
-                  {exp.type}
-                </div>
-                <div className="w-6 h-px bg-white/20" />
-                <div className="font-mono text-[10px] tracking-widest uppercase text-white/40">
-                  {exp.duration}
-                </div>
-              </div>
-
-              <h3 className="font-display text-3xl md:text-4xl font-light text-white leading-tight">
-                {exp.role}
-              </h3>
-              <div className="mt-1 text-amber-100/85 text-base">{exp.company}</div>
-
-              {exp.location && (
-                <div className="mt-3 flex items-center gap-2 text-white/55 text-sm">
-                  <MapPin size={13} className="text-amber-200/70" />
-                  {exp.location}
-                </div>
-              )}
-
-              <div className="mt-7">
-                <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-white/40 mb-3">
-                  Impact
-                </div>
-                <ul className="space-y-2.5">
-                  {(exp.bullets || []).map((b, i) => (
-                    <li key={i} className="flex gap-2 text-white/80 text-[15px] leading-relaxed">
-                      <ChevronRight size={14} className="mt-1.5 text-amber-200/70 flex-shrink-0" />
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {(exp.relatedSkills || []).length > 0 && (
-                <div className="mt-7">
-                  <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-white/40 mb-3">
-                    Skills used
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {exp.relatedSkills.map((t) => (
-                      <span key={t} className="px-3 py-1.5 text-xs font-mono bg-white/5 border border-white/10 rounded-full text-white/80">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {(exp.relatedProjects || []).length > 0 && (
-                <div className="mt-8">
-                  <button
-                    onClick={jumpToProjects}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-amber-200/90 hover:bg-amber-200 text-[#0a0520] text-sm font-medium rounded-full transition-colors"
-                  >
-                    See {exp.relatedProjects.length} linked project{exp.relatedProjects.length > 1 ? "s" : ""}
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ExperiencePanel
+        exp={exp}
+        onClose={closePanel}
+        onJumpToProjects={jumpToProjects}
+        PlanetVisual={PlanetVisual}
+        Moons={Moons}
+        SaturnRing={SaturnRing}
+      />
     </section>
   );
 };

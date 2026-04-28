@@ -21,13 +21,13 @@ const Footer = () => {
 
           <div className="flex items-center gap-3">
             {[
-              { href: profile.socials.github, icon: Github },
-              { href: profile.socials.linkedin, icon: Linkedin },
-              { href: profile.socials.twitter, icon: Twitter },
-              { href: profile.socials.instagram, icon: Instagram }
-            ].map((s, i) => (
+              { href: profile.socials.github, icon: Github, key: "gh" },
+              { href: profile.socials.linkedin, icon: Linkedin, key: "li" },
+              { href: profile.socials.twitter, icon: Twitter, key: "tw" },
+              { href: profile.socials.instagram, icon: Instagram, key: "ig" }
+            ].map((s) => (
               <a
-                key={i}
+                key={s.key}
                 href={s.href}
                 target="_blank" rel="noreferrer"
                 className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:border-amber-200/60 hover:text-amber-100 transition-colors"

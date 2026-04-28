@@ -461,8 +461,8 @@ const Blackhole = () => {
                     <div className="font-display text-xl text-white">{e.role}</div>
                     <div className="text-amber-100/70 text-sm mb-3">{e.company}</div>
                     <ul className="space-y-1.5">
-                      {e.bullets.map((b, i) => (
-                        <li key={i} className="flex gap-2 text-white/70 text-[15px]">
+                      {e.bullets.map((b) => (
+                        <li key={b.slice(0, 40)} className="flex gap-2 text-white/70 text-[15px]">
                           <ChevronRight size={14} className="mt-1 text-amber-200/60 flex-shrink-0" />
                           <span>{b}</span>
                         </li>
@@ -490,8 +490,8 @@ const Blackhole = () => {
                     <div className="font-display text-xl text-white">{p.name}</div>
                     <div className="text-amber-100/70 text-sm mb-3 font-mono">{p.tech}</div>
                     <ul className="space-y-1.5">
-                      {p.bullets.map((b, i) => (
-                        <li key={i} className="flex gap-2 text-white/70 text-[15px]">
+                      {p.bullets.map((b) => (
+                        <li key={b.slice(0, 40)} className="flex gap-2 text-white/70 text-[15px]">
                           <ChevronRight size={14} className="mt-1 text-amber-200/60 flex-shrink-0" />
                           <span>{b}</span>
                         </li>
@@ -553,8 +553,8 @@ const Blackhole = () => {
                   <h3 className="font-display text-2xl text-white">Certifications</h3>
                 </div>
                 <ul className="space-y-2">
-                  {resume.certifications.map((a, i) => (
-                    <li key={i} className="flex gap-2 text-white/70 text-[15px]">
+                  {resume.certifications.map((a) => (
+                    <li key={a} className="flex gap-2 text-white/70 text-[15px]">
                       <span className="text-amber-200/60">·</span>
                       {a}
                     </li>
