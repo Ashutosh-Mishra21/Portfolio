@@ -1,0 +1,13 @@
+/* App-level styles. Global cosmic look lives in index.css. */
+.App {
+  background: #030010;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* No global overflow rules — they can break position:sticky in children */
