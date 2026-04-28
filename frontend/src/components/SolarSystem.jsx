@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { projects } from "../mock/mock";
-import { X, ExternalLink, Github } from "lucide-react";
+import { experiences } from "../mock/mock";
+import { useHighlight } from "../context/HighlightContext";
+import { X, MapPin, ChevronRight } from "lucide-react";
 
 /* -------- Planet visual: realistic gradient + bands + atmosphere + highlight -------- */
 const PlanetVisual = ({ p, size, animated = false }) => (
@@ -23,7 +24,7 @@ const PlanetVisual = ({ p, size, animated = false }) => (
       className="absolute inset-0 opacity-40 mix-blend-overlay"
       style={{
         background: `repeating-linear-gradient(
-          ${p.id === "jupiter" ? 8 : p.id === "saturn" ? 4 : 24}deg,
+          ${p.id === "rag-arc" ? 8 : p.id === "nn-arc" ? 4 : 24}deg,
           rgba(255,255,255,0.12) 0px,
           rgba(0,0,0,0.18) ${size * 0.05}px,
           rgba(255,255,255,0.04) ${size * 0.1}px
@@ -63,13 +64,13 @@ const PlanetVisual = ({ p, size, animated = false }) => (
   </div>
 );
 
-/* -------- Moons revolving around a planet -------- */
+/* -------- Moons (unchanged behaviour) -------- */
 const Moons = ({ planet, planetSize, paused = false, scale = 1 }) => {
   const moons = planet.moons || [];
   return (
     <>
       {moons.map((m, i) => {
-        const radius = planetSize * m.distance; // moon orbit radius
+        const radius = planetSize * m.distance;
         return (
           <div
             key={i}
@@ -92,11 +93,9 @@ const Moons = ({ planet, planetSize, paused = false, scale = 1 }) => {
                 boxShadow: `0 0 ${planetSize * m.size * 0.6}px ${m.color}55, inset -${planetSize * m.size * 0.18}px -${planetSize * m.size * 0.22}px ${planetSize * m.size * 0.4}px rgba(0,0,0,0.6)`
               }}
             />
-            {/* faint moon orbit trail */}
           </div>
         );
       })}
-      {/* Moon orbit rings (faint) */}
       {moons.map((m, i) => (
         <div
           key={`ring-${i}`}
@@ -112,7 +111,7 @@ const Moons = ({ planet, planetSize, paused = false, scale = 1 }) => {
   );
 };
 
-/* -------- Saturn-like ring (reused) -------- */
+/* -------- Saturn-like ring -------- */
 const SaturnRing = ({ p, planetSize }) => (
   <div
     className="absolute top-1/2 left-1/2 pointer-events-none"
@@ -135,10 +134,11 @@ const SolarSystem = () => {
   const [paused, setPaused] = useState(false);
   const wrapRef = useRef(null);
   const [scale, setScale] = useState(1);
+  const { setHighlight, isHighlighted } = useHighlight();
 
   useEffect(() => {
     const onResize = () => {
-      const maxOrbit = Math.max(...projects.map((p) => p.orbit));
+      const maxOrbit = Math.max(...experiences.map((p) => p.orbit));
       const needed = (maxOrbit + 80) * 2;
       const vw = window.innerWidth;
       const containerH = Math.min(window.innerHeight * 0.78, 900);
@@ -155,7 +155,34 @@ const SolarSystem = () => {
     else setPaused(false);
   }, [selected]);
 
-  const proj = selected ? projects.find((p) => p.id === selected) : null;
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") setSelected(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const exp = selected ? experiences.find((p) => p.id === selected) : null;
+
+  const handlePlanetClick = (e) => {
+    setSelected(e.id);
+    setHighlight({
+      source: "experience",
+      id: e.id,
+      experiences: [e.id],
+      projects: e.relatedProjects || [],
+      skills: e.relatedSkills || []
+    });
+  };
+
+  const jumpToProjects = () => {
+    setSelected(null);
+    setTimeout(() => {
+      const el = document.getElementById("projects");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
 
   return (
     <section id="solar" className="relative min-h-screen py-20 overflow-hidden">
@@ -163,14 +190,17 @@ const SolarSystem = () => {
         <div className="flex items-end justify-between flex-wrap gap-6 mb-8">
           <div>
             <div className="font-mono text-[10px] tracking-[0.4em] uppercase text-amber-200/70 mb-3">
-              — Section 03 / The System
+              — Section 03 / Career arc
             </div>
             <h2 className="font-display text-3xl md:text-5xl font-light text-white leading-tight">
-              Selected <span className="italic text-amber-100">worlds</span>
+              Worlds I've <span className="italic text-amber-100">lived in</span>
             </h2>
+            <p className="mt-3 text-white/55 max-w-md">
+              Six planets — each a job, internship, or research arc. Hover for the role, click to step inside.
+            </p>
           </div>
           <div className="font-mono text-[11px] text-white/40 tracking-widest uppercase">
-            {proj ? `> ${proj.name}` : "> Awaiting selection · hover or click a planet"}
+            {exp ? `> ${exp.role}` : "> Awaiting selection · hover or click a planet"}
           </div>
         </div>
       </div>
@@ -191,7 +221,7 @@ const SolarSystem = () => {
           }}
         >
           {/* Orbit rings */}
-          {projects.map((p, i) => (
+          {experiences.map((p, i) => (
             <div
               key={`orbit-${p.id}`}
               className="orbit-path-vivid"
@@ -203,7 +233,7 @@ const SolarSystem = () => {
             />
           ))}
 
-          {/* Sun */}
+          {/* Sun -> jump to skills */}
           <button
             onClick={() => {
               const el = document.getElementById("sun");
@@ -243,51 +273,69 @@ const SolarSystem = () => {
           </button>
 
           {/* Planets + moons */}
-          {projects.map((p, i) => (
-            <div
-              key={p.id}
-              className="absolute top-1/2 left-1/2"
-              style={{
-                width: 0, height: 0,
-                animation: `orbit ${p.speed}s linear infinite`,
-                animationDelay: `${-p.speed * (i / projects.length + 0.12 * i)}s`,
-                animationPlayState: paused ? "paused" : "running",
-                ['--orbit-radius']: `${p.orbit}px`,
-              }}
-            >
-              {/* Wrapper that holds the planet + moons (not scaled by hover) */}
-              <div className="absolute -translate-x-1/2 -translate-y-1/2">
-                {/* Moons orbit relative to this wrapper */}
-                <Moons planet={p} planetSize={p.size * 2} paused={paused} />
+          {experiences.map((p, i) => {
+            const litFromContext = isHighlighted("experience", p.id);
+            return (
+              <div
+                key={p.id}
+                className="absolute top-1/2 left-1/2"
+                style={{
+                  width: 0, height: 0,
+                  animation: `orbit ${p.speed}s linear infinite`,
+                  animationDelay: `${-p.speed * (i / experiences.length + 0.12 * i)}s`,
+                  animationPlayState: paused ? "paused" : "running",
+                  ['--orbit-radius']: `${p.orbit}px`,
+                }}
+              >
+                <div className="absolute -translate-x-1/2 -translate-y-1/2">
+                  <Moons planet={p} planetSize={p.size * 2} paused={paused} />
 
-                {/* Planet button (separate so hover scale doesn't affect moons) */}
-                <button
-                  onClick={() => setSelected(p.id)}
-                  onMouseEnter={() => setHovered(p.id)}
-                  onMouseLeave={() => setHovered(null)}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
-                  style={{
-                    transform: `translate(-50%, -50%) scale(${hovered === p.id ? 1.3 : 1})`,
-                  }}
-                >
-                  <PlanetVisual p={p} size={p.size * 2} />
-                  {p.hasRing && <SaturnRing p={p} planetSize={p.size * 2} />}
+                  <button
+                    onClick={() => handlePlanetClick(p)}
+                    onMouseEnter={() => setHovered(p.id)}
+                    onMouseLeave={() => setHovered(null)}
+                    className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
+                    style={{
+                      transform: `translate(-50%, -50%) scale(${hovered === p.id || litFromContext ? 1.3 : 1})`,
+                    }}
+                  >
+                    {/* Highlight halo when externally lit */}
+                    {litFromContext && (
+                      <div
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full pointer-events-none"
+                        style={{
+                          width: p.size * 4,
+                          height: p.size * 4,
+                          boxShadow: `0 0 30px 6px rgba(255,210,150,0.55)`,
+                          border: "1px solid rgba(255,210,150,0.5)"
+                        }}
+                      />
+                    )}
 
-                  {hovered === p.id && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 whitespace-nowrap pointer-events-none">
-                      <div className="font-display text-sm text-white">{p.name}</div>
-                      <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-white/50 text-center mt-0.5">{p.year}</div>
-                    </div>
-                  )}
-                </button>
+                    <PlanetVisual p={p} size={p.size * 2} />
+                    {p.hasRing && <SaturnRing p={p} planetSize={p.size * 2} />}
+
+                    {hovered === p.id && (
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 whitespace-nowrap pointer-events-none">
+                        <div className="font-display text-sm text-white">{p.role}</div>
+                        <div className="font-mono text-[10px] tracking-widest uppercase text-amber-200/80 text-center mt-0.5">
+                          {p.company}
+                        </div>
+                        <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-white/50 text-center mt-0.5">
+                          {p.duration}
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Project panel — bigger spinning planet preview with moons */}
-      {proj && (
+      {/* Experience panel */}
+      {exp && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4 md:p-8" style={{ pointerEvents: "none" }}>
           <div
             className="absolute inset-0 bg-black/75 backdrop-blur-md animate-fade-up"
@@ -304,21 +352,20 @@ const SolarSystem = () => {
                 className="absolute rounded-full animate-pulse-glow"
                 style={{
                   width: 520, height: 520,
-                  background: `radial-gradient(circle, ${proj.color}33 0%, ${proj.color}11 40%, transparent 70%)`,
+                  background: `radial-gradient(circle, ${exp.color}33 0%, ${exp.color}11 40%, transparent 70%)`,
                   filter: "blur(40px)"
                 }}
               />
               <div className="relative">
-                {/* Moons orbit the centered preview planet */}
                 <div className="absolute top-1/2 left-1/2">
-                  <Moons planet={proj} planetSize={340} paused={false} scale={0.7} />
+                  <Moons planet={exp} planetSize={340} paused={false} scale={0.7} />
                 </div>
-                <PlanetVisual p={proj} size={340} animated />
-                {proj.hasRing && <SaturnRing p={proj} planetSize={340} />}
+                <PlanetVisual p={exp} size={340} animated />
+                {exp.hasRing && <SaturnRing p={exp} planetSize={340} />}
               </div>
             </div>
 
-            {/* Info card */}
+            {/* Info card - experience content */}
             <div className="bg-[#0a0520]/95 border border-white/10 rounded-2xl p-8 md:p-10 shadow-2xl relative">
               <button
                 onClick={() => setSelected(null)}
@@ -329,63 +376,71 @@ const SolarSystem = () => {
               </button>
 
               <div className="md:hidden flex justify-center mb-6">
-                <PlanetVisual p={proj} size={140} animated />
+                <PlanetVisual p={exp} size={140} animated />
               </div>
 
               <div className="flex items-center gap-3 mb-4 flex-wrap">
                 <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-amber-200/70">
-                  Planet · {proj.id}
+                  {exp.type}
                 </div>
                 <div className="w-6 h-px bg-white/20" />
                 <div className="font-mono text-[10px] tracking-widest uppercase text-white/40">
-                  {proj.year}
-                </div>
-                <div className="w-6 h-px bg-white/20" />
-                <div className="font-mono text-[10px] tracking-widest uppercase text-white/40">
-                  {(proj.moons || []).length} {((proj.moons || []).length === 1 ? "moon" : "moons")}
+                  {exp.duration}
                 </div>
               </div>
 
               <h3 className="font-display text-3xl md:text-4xl font-light text-white leading-tight">
-                {proj.name}
+                {exp.role}
               </h3>
-              <p className="mt-1 text-amber-100/80 text-sm">{proj.subtitle}</p>
+              <div className="mt-1 text-amber-100/85 text-base">{exp.company}</div>
 
-              <p className="mt-6 text-white/70 leading-relaxed text-[15px]">
-                {proj.description}
-              </p>
+              {exp.location && (
+                <div className="mt-3 flex items-center gap-2 text-white/55 text-sm">
+                  <MapPin size={13} className="text-amber-200/70" />
+                  {exp.location}
+                </div>
+              )}
 
               <div className="mt-7">
                 <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-white/40 mb-3">
-                  Stack
+                  Impact
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {proj.tech.map((t) => (
-                    <span key={t} className="px-3 py-1.5 text-xs font-mono bg-white/5 border border-white/10 rounded-full text-white/80">
-                      {t}
-                    </span>
+                <ul className="space-y-2.5">
+                  {(exp.bullets || []).map((b, i) => (
+                    <li key={i} className="flex gap-2 text-white/80 text-[15px] leading-relaxed">
+                      <ChevronRight size={14} className="mt-1.5 text-amber-200/70 flex-shrink-0" />
+                      <span>{b}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
 
-              <div className="mt-8 flex gap-3">
-                <a
-                  href={proj.demo}
-                  target="_blank" rel="noreferrer"
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-amber-200/90 hover:bg-amber-200 text-[#0a0520] text-sm font-medium rounded-full transition-colors"
-                >
-                  <ExternalLink size={14} />
-                  Live demo
-                </a>
-                <a
-                  href={proj.github}
-                  target="_blank" rel="noreferrer"
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/15 text-white text-sm font-medium rounded-full transition-colors"
-                >
-                  <Github size={14} />
-                  Source
-                </a>
-              </div>
+              {(exp.relatedSkills || []).length > 0 && (
+                <div className="mt-7">
+                  <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-white/40 mb-3">
+                    Skills used
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {exp.relatedSkills.map((t) => (
+                      <span key={t} className="px-3 py-1.5 text-xs font-mono bg-white/5 border border-white/10 rounded-full text-white/80">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(exp.relatedProjects || []).length > 0 && (
+                <div className="mt-8">
+                  <button
+                    onClick={jumpToProjects}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-amber-200/90 hover:bg-amber-200 text-[#0a0520] text-sm font-medium rounded-full transition-colors"
+                  >
+                    See {exp.relatedProjects.length} linked project{exp.relatedProjects.length > 1 ? "s" : ""}
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
