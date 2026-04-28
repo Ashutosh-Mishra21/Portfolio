@@ -44,12 +44,14 @@ const Galaxy = () => {
 
     let rotation = 0;
     let raf;
+    let frame = 0;
     const draw = () => {
       if (w > 0 && h > 0 && stars.length) {
         ctx.clearRect(0, 0, w, h);
         rotation += 0.0008;
+        frame++;
 
-        // Brighter, larger core glow
+        // Bright, larger core glow
         const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * 0.42);
         grad.addColorStop(0, "rgba(255, 230, 180, 0.55)");
         grad.addColorStop(0.15, "rgba(255, 200, 150, 0.32)");
@@ -58,6 +60,39 @@ const Galaxy = () => {
         grad.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, w, h);
+
+        // ----- Gas / nebula clouds along the spiral arms -----
+        // We render multiple soft elliptical clouds along arm angles, slowly rotating.
+        const baseR = Math.min(w, h) * 0.5;
+        const armCount = 4;
+        ctx.save();
+        ctx.globalCompositeOperation = "screen";
+        for (let arm = 0; arm < armCount; arm++) {
+          for (let k = 0; k < 14; k++) {
+            const r = (k / 14) * baseR * 0.95 + baseR * 0.05;
+            const armAngle = (arm * Math.PI * 2) / armCount + r * 0.014 + rotation * (1 + 0.1 * (1 - r / baseR));
+            const x = cx + Math.cos(armAngle) * r;
+            const y = cy + Math.sin(armAngle) * r * 0.42;
+            const cloudR = baseR * (0.05 + Math.sin(k * 0.7 + arm) * 0.02 + 0.03);
+            // Color varies along radius: pinkish core → blueish edge with magenta hints
+            const t = r / baseR;
+            const colors = [
+              `rgba(255, 180, 210, ${(1 - t) * 0.16})`, // pink
+              `rgba(180, 140, 255, ${(1 - t) * 0.12})`, // violet
+              `rgba(120, 180, 255, ${(0.4 + t * 0.6) * 0.10})`, // blue
+              `rgba(255, 220, 170, ${(1 - t) * 0.10})`  // amber
+            ];
+            const c = colors[(arm + k) % colors.length];
+            const cg = ctx.createRadialGradient(x, y, 0, x, y, cloudR * 5);
+            cg.addColorStop(0, c);
+            cg.addColorStop(1, "rgba(0,0,0,0)");
+            ctx.fillStyle = cg;
+            ctx.beginPath();
+            ctx.ellipse(x, y, cloudR * 5, cloudR * 2.2, armAngle, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.restore();
 
         // Stars along spiral
         for (const s of stars) {
@@ -73,6 +108,25 @@ const Galaxy = () => {
           ctx.arc(x, y, s.size, 0, Math.PI * 2);
           ctx.fill();
         }
+
+        // Dust lanes — thin dark bands radiating from core (light absorption look)
+        ctx.save();
+        ctx.globalCompositeOperation = "multiply";
+        for (let arm = 0; arm < armCount; arm++) {
+          ctx.beginPath();
+          const startA = (arm * Math.PI * 2) / armCount + Math.PI * 0.05 + rotation;
+          for (let r = baseR * 0.15; r < baseR * 0.95; r += 4) {
+            const a = startA + r * 0.014;
+            const x = cx + Math.cos(a) * r;
+            const y = cy + Math.sin(a) * r * 0.42;
+            if (r === baseR * 0.15) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.strokeStyle = "rgba(20, 10, 30, 0.45)";
+          ctx.lineWidth = 6 * (window.devicePixelRatio || 1);
+          ctx.stroke();
+        }
+        ctx.restore();
       }
       raf = requestAnimationFrame(draw);
     };

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { timeline, resume, profile } from "../mock/mock";
-import { ArrowDown, Download, ArrowLeft, ChevronRight, Award, Briefcase, GraduationCap } from "lucide-react";
+import { ArrowDown, Download, ArrowLeft, ChevronRight, Award, Briefcase, GraduationCap, Sparkles, Code2 } from "lucide-react";
 
 /**
  * Canvas black hole — Interstellar / Gargantua inspired.
@@ -405,7 +405,7 @@ const Blackhole = () => {
       {/* RESUME */}
       <section className="relative z-10 py-32 bg-[#050018]">
         <div className="max-w-5xl mx-auto px-6 md:px-10">
-          <div className="flex items-end justify-between flex-wrap gap-6 mb-16">
+          <div className="flex items-end justify-between flex-wrap gap-6 mb-12">
             <div>
               <div className="font-mono text-[10px] tracking-[0.5em] uppercase text-amber-200/70 mb-4">
                 — Résumé / CV
@@ -413,7 +413,18 @@ const Blackhole = () => {
               <h2 className="font-display text-4xl md:text-6xl font-light">
                 {resume.name}
               </h2>
-              <div className="mt-2 text-amber-100/70 text-lg">{resume.title}</div>
+              <div className="mt-2 text-amber-100/80 text-lg">{resume.title}</div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-white/60">
+                <span>{resume.location}</span>
+                <span className="text-white/30">·</span>
+                <a href={`mailto:${resume.email}`} className="hover:text-amber-100">{resume.email}</a>
+                <span className="text-white/30">·</span>
+                <span>{resume.phone}</span>
+              </div>
+              <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                <a href={`https://${resume.links.github}`} target="_blank" rel="noreferrer" className="text-amber-200/80 hover:text-amber-100">{resume.links.github}</a>
+                <a href={`https://${resume.links.linkedin}`} target="_blank" rel="noreferrer" className="text-amber-200/80 hover:text-amber-100">{resume.links.linkedin}</a>
+              </div>
             </div>
             <a
               href="#"
@@ -421,11 +432,11 @@ const Blackhole = () => {
               className="inline-flex items-center gap-2 px-5 py-3 bg-amber-200 hover:bg-amber-100 text-[#0a0520] text-sm font-medium rounded-full transition-colors"
             >
               <Download size={14} />
-              Download PDF
+              Print / Save PDF
             </a>
           </div>
 
-          <p className="text-white/70 text-lg leading-relaxed max-w-2xl mb-16">
+          <p className="text-white/70 text-lg leading-relaxed max-w-3xl mb-16">
             {resume.summary}
           </p>
 
@@ -438,8 +449,13 @@ const Blackhole = () => {
             <div className="space-y-10">
               {resume.experience.map((e) => (
                 <div key={e.role + e.company} className="grid md:grid-cols-[200px_1fr] gap-4 md:gap-8 pb-8 border-b border-white/5">
-                  <div className="font-mono text-[11px] tracking-widest uppercase text-white/40">
-                    {e.period}
+                  <div>
+                    <div className="font-mono text-[11px] tracking-widest uppercase text-white/50">
+                      {e.period}
+                    </div>
+                    <div className="font-mono text-[10px] tracking-widest uppercase text-white/35 mt-1">
+                      {e.location}
+                    </div>
                   </div>
                   <div>
                     <div className="font-display text-xl text-white">{e.role}</div>
@@ -458,41 +474,114 @@ const Blackhole = () => {
             </div>
           </div>
 
-          {/* Education + Awards */}
-          <div className="grid md:grid-cols-2 gap-12">
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <GraduationCap size={16} className="text-amber-200/80" />
-                <h3 className="font-display text-2xl text-white">Education</h3>
-              </div>
-              {resume.education.map((ed) => (
-                <div key={ed.degree} className="pb-5 border-b border-white/5">
-                  <div className="font-display text-lg text-white">{ed.degree}</div>
-                  <div className="text-white/60 text-sm">{ed.school}</div>
-                  <div className="font-mono text-[11px] tracking-widest uppercase text-white/40 mt-1">
-                    {ed.period}
+          {/* Projects */}
+          <div className="mb-16">
+            <div className="flex items-center gap-3 mb-8">
+              <Sparkles size={16} className="text-amber-200/80" />
+              <h3 className="font-display text-2xl text-white">Selected projects</h3>
+            </div>
+            <div className="space-y-10">
+              {resume.projects.map((p) => (
+                <div key={p.name} className="grid md:grid-cols-[200px_1fr] gap-4 md:gap-8 pb-8 border-b border-white/5">
+                  <div className="font-mono text-[11px] tracking-widest uppercase text-white/50">
+                    {p.period}
+                  </div>
+                  <div>
+                    <div className="font-display text-xl text-white">{p.name}</div>
+                    <div className="text-amber-100/70 text-sm mb-3 font-mono">{p.tech}</div>
+                    <ul className="space-y-1.5">
+                      {p.bullets.map((b, i) => (
+                        <li key={i} className="flex gap-2 text-white/70 text-[15px]">
+                          <ChevronRight size={14} className="mt-1 text-amber-200/60 flex-shrink-0" />
+                          <span>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Skills + Education + Certifications */}
+          <div className="grid md:grid-cols-2 gap-12 mb-16">
             <div>
               <div className="flex items-center gap-3 mb-6">
-                <Award size={16} className="text-amber-200/80" />
-                <h3 className="font-display text-2xl text-white">Awards</h3>
+                <Code2 size={16} className="text-amber-200/80" />
+                <h3 className="font-display text-2xl text-white">Skills</h3>
               </div>
-              <ul className="space-y-3">
-                {resume.awards.map((a, i) => (
-                  <li key={i} className="flex gap-2 text-white/70">
-                    <span className="text-amber-200/60">·</span>
-                    {a}
-                  </li>
+              <div className="space-y-5">
+                {Object.entries(resume.skillCategories).map(([cat, items]) => (
+                  <div key={cat}>
+                    <div className="font-mono text-[10px] tracking-widest uppercase text-amber-200/70 mb-2">
+                      {cat}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {items.map((s) => (
+                        <span key={s} className="px-3 py-1 text-xs font-mono bg-white/5 border border-white/10 rounded-full text-white/80">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
+            </div>
+
+            <div className="space-y-12">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <GraduationCap size={16} className="text-amber-200/80" />
+                  <h3 className="font-display text-2xl text-white">Education</h3>
+                </div>
+                <div className="space-y-5">
+                  {resume.education.map((ed) => (
+                    <div key={ed.degree} className="pb-5 border-b border-white/5 last:border-b-0">
+                      <div className="font-display text-base text-white leading-snug">{ed.degree}</div>
+                      <div className="text-white/60 text-sm">{ed.school}</div>
+                      <div className="font-mono text-[11px] tracking-widest uppercase text-white/40 mt-1">
+                        {ed.period} · {ed.gpa}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <Award size={16} className="text-amber-200/80" />
+                  <h3 className="font-display text-2xl text-white">Certifications</h3>
+                </div>
+                <ul className="space-y-2">
+                  {resume.certifications.map((a, i) => (
+                    <li key={i} className="flex gap-2 text-white/70 text-[15px]">
+                      <span className="text-amber-200/60">·</span>
+                      {a}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
 
+          {/* Interests */}
+          {resume.interests && resume.interests.length > 0 && (
+            <div className="mb-16">
+              <div className="font-mono text-[10px] tracking-widest uppercase text-amber-200/70 mb-3">
+                Interests
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {resume.interests.map((it) => (
+                  <span key={it} className="px-3 py-1.5 text-xs font-mono bg-white/5 border border-white/10 rounded-full text-white/80">
+                    {it}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Return home */}
-          <div className="mt-24 text-center">
+          <div className="mt-12 text-center">
             <button
               onClick={() => navigate("/")}
               className="inline-flex items-center gap-2 px-6 py-3 border border-white/15 hover:border-amber-200/60 hover:text-amber-100 text-white/80 text-sm font-mono tracking-wider rounded-full transition-colors"

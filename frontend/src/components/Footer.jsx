@@ -1,6 +1,6 @@
 import React from "react";
 import { profile } from "../mock/mock";
-import { Github, Linkedin, Twitter } from "lucide-react";
+import { Github, Linkedin, Twitter, Instagram } from "lucide-react";
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -23,7 +23,8 @@ const Footer = () => {
             {[
               { href: profile.socials.github, icon: Github },
               { href: profile.socials.linkedin, icon: Linkedin },
-              { href: profile.socials.twitter, icon: Twitter }
+              { href: profile.socials.twitter, icon: Twitter },
+              { href: profile.socials.instagram, icon: Instagram }
             ].map((s, i) => (
               <a
                 key={i}

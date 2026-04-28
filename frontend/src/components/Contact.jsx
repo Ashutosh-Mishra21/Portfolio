@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { profile } from "../mock/mock";
-import { Mail, Github, Linkedin, Twitter, ArrowUpRight, Send } from "lucide-react";
+import { Mail, Github, Linkedin, Twitter, Instagram, ArrowUpRight, Send } from "lucide-react";
 import { toast } from "../hooks/use-toast";
 
 const Contact = () => {
@@ -62,7 +62,8 @@ const Contact = () => {
                 {[
                   { href: profile.socials.github, icon: Github, label: "GitHub" },
                   { href: profile.socials.linkedin, icon: Linkedin, label: "LinkedIn" },
-                  { href: profile.socials.twitter, icon: Twitter, label: "Twitter" }
+                  { href: profile.socials.twitter, icon: Twitter, label: "Twitter" },
+                  { href: profile.socials.instagram, icon: Instagram, label: "Instagram" }
                 ].map((s) => (
                   <a
                     key={s.label}

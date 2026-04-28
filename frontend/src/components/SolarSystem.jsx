@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { projects } from "../mock/mock";
 import { X, ExternalLink, Github } from "lucide-react";
 
-// Reusable planet renderer. Used both in orbit and in the detail panel.
+/* -------- Planet visual: realistic gradient + bands + atmosphere + highlight -------- */
 const PlanetVisual = ({ p, size, animated = false }) => (
   <div
     className={`relative rounded-full overflow-hidden ${animated ? "animate-spin-slow" : ""}`}
@@ -30,6 +30,17 @@ const PlanetVisual = ({ p, size, animated = false }) => (
         )`
       }}
     />
+    {/* Cloud / continent texture */}
+    <div
+      className="absolute inset-0 opacity-25 mix-blend-screen"
+      style={{
+        background: `
+          radial-gradient(ellipse at 65% 40%, ${p.color}88 0%, transparent 18%),
+          radial-gradient(ellipse at 28% 65%, ${p.ring}aa 0%, transparent 20%),
+          radial-gradient(ellipse at 75% 75%, ${p.color}66 0%, transparent 15%)
+        `
+      }}
+    />
     {/* Atmospheric rim */}
     <div
       className="absolute inset-0 rounded-full pointer-events-none"
@@ -52,6 +63,72 @@ const PlanetVisual = ({ p, size, animated = false }) => (
   </div>
 );
 
+/* -------- Moons revolving around a planet -------- */
+const Moons = ({ planet, planetSize, paused = false, scale = 1 }) => {
+  const moons = planet.moons || [];
+  return (
+    <>
+      {moons.map((m, i) => {
+        const radius = planetSize * m.distance; // moon orbit radius
+        return (
+          <div
+            key={i}
+            className="absolute top-1/2 left-1/2 pointer-events-none"
+            style={{
+              width: 0,
+              height: 0,
+              animation: `orbit ${m.speed}s linear infinite`,
+              animationDelay: `${-m.phase / 360 * m.speed}s`,
+              animationPlayState: paused ? "paused" : "running",
+              ['--orbit-radius']: `${radius}px`,
+            }}
+          >
+            <div
+              className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{
+                width: planetSize * m.size * scale,
+                height: planetSize * m.size * scale,
+                background: `radial-gradient(circle at 35% 30%, ${m.color}, #1a1322 95%)`,
+                boxShadow: `0 0 ${planetSize * m.size * 0.6}px ${m.color}55, inset -${planetSize * m.size * 0.18}px -${planetSize * m.size * 0.22}px ${planetSize * m.size * 0.4}px rgba(0,0,0,0.6)`
+              }}
+            />
+            {/* faint moon orbit trail */}
+          </div>
+        );
+      })}
+      {/* Moon orbit rings (faint) */}
+      {moons.map((m, i) => (
+        <div
+          key={`ring-${i}`}
+          className="absolute top-1/2 left-1/2 pointer-events-none rounded-full border border-white/[0.06]"
+          style={{
+            width: planetSize * m.distance * 2,
+            height: planetSize * m.distance * 2,
+            transform: "translate(-50%, -50%)"
+          }}
+        />
+      ))}
+    </>
+  );
+};
+
+/* -------- Saturn-like ring (reused) -------- */
+const SaturnRing = ({ p, planetSize }) => (
+  <div
+    className="absolute top-1/2 left-1/2 pointer-events-none"
+    style={{
+      width: planetSize * 2.5,
+      height: planetSize * 0.6,
+      transform: "translate(-50%, -50%) rotate(-22deg)",
+      borderRadius: "50%",
+      background: `linear-gradient(90deg, transparent 0%, ${p.color}aa 20%, ${p.color} 50%, ${p.color}aa 80%, transparent 100%)`,
+      opacity: 0.7,
+      maskImage: "radial-gradient(ellipse at center, transparent 32%, black 34%)",
+      WebkitMaskImage: "radial-gradient(ellipse at center, transparent 32%, black 34%)"
+    }}
+  />
+);
+
 const SolarSystem = () => {
   const [selected, setSelected] = useState(null);
   const [hovered, setHovered] = useState(null);
@@ -62,7 +139,7 @@ const SolarSystem = () => {
   useEffect(() => {
     const onResize = () => {
       const maxOrbit = Math.max(...projects.map((p) => p.orbit));
-      const needed = (maxOrbit + 60) * 2;
+      const needed = (maxOrbit + 80) * 2;
       const vw = window.innerWidth;
       const containerH = Math.min(window.innerHeight * 0.78, 900);
       const fit = Math.min(vw / needed, containerH / needed, 1.1);
@@ -82,7 +159,6 @@ const SolarSystem = () => {
 
   return (
     <section id="solar" className="relative min-h-screen py-20 overflow-hidden">
-      {/* Section heading */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-10">
         <div className="flex items-end justify-between flex-wrap gap-6 mb-8">
           <div>
@@ -114,7 +190,7 @@ const SolarSystem = () => {
             height: 0
           }}
         >
-          {/* Orbit rings - more visible */}
+          {/* Orbit rings */}
           {projects.map((p, i) => (
             <div
               key={`orbit-${p.id}`}
@@ -127,7 +203,7 @@ const SolarSystem = () => {
             />
           ))}
 
-          {/* Sun with corona */}
+          {/* Sun */}
           <button
             onClick={() => {
               const el = document.getElementById("sun");
@@ -136,7 +212,6 @@ const SolarSystem = () => {
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 group"
             aria-label="Navigate to skills"
           >
-            {/* Outer corona */}
             <div
               className="absolute rounded-full animate-pulse-glow"
               style={{
@@ -146,7 +221,6 @@ const SolarSystem = () => {
                 filter: "blur(28px)"
               }}
             />
-            {/* Inner glow */}
             <div
               className="absolute rounded-full"
               style={{
@@ -168,7 +242,7 @@ const SolarSystem = () => {
             </span>
           </button>
 
-          {/* Planets */}
+          {/* Planets + moons */}
           {projects.map((p, i) => (
             <div
               key={p.id}
@@ -181,87 +255,66 @@ const SolarSystem = () => {
                 ['--orbit-radius']: `${p.orbit}px`,
               }}
             >
-              <button
-                onClick={() => setSelected(p.id)}
-                onMouseEnter={() => setHovered(p.id)}
-                onMouseLeave={() => setHovered(null)}
-                className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
-                style={{
-                  transform: `translate(-50%, -50%) scale(${hovered === p.id ? 1.3 : 1})`,
-                  transformOrigin: "center",
-                }}
-              >
-                <PlanetVisual p={p} size={p.size * 2} />
+              {/* Wrapper that holds the planet + moons (not scaled by hover) */}
+              <div className="absolute -translate-x-1/2 -translate-y-1/2">
+                {/* Moons orbit relative to this wrapper */}
+                <Moons planet={p} planetSize={p.size * 2} paused={paused} />
 
-                {/* Saturn's ring */}
-                {p.hasRing && (
-                  <div
-                    className="absolute top-1/2 left-1/2 pointer-events-none"
-                    style={{
-                      width: p.size * 5,
-                      height: p.size * 1.2,
-                      transform: "translate(-50%, -50%) rotate(-22deg)",
-                      borderRadius: "50%",
-                      background: `linear-gradient(90deg, transparent 0%, ${p.color}aa 20%, ${p.color} 50%, ${p.color}aa 80%, transparent 100%)`,
-                      opacity: 0.6,
-                      maskImage: "radial-gradient(ellipse at center, transparent 30%, black 32%)",
-                      WebkitMaskImage: "radial-gradient(ellipse at center, transparent 30%, black 32%)"
-                    }}
-                  />
-                )}
+                {/* Planet button (separate so hover scale doesn't affect moons) */}
+                <button
+                  onClick={() => setSelected(p.id)}
+                  onMouseEnter={() => setHovered(p.id)}
+                  onMouseLeave={() => setHovered(null)}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-transform duration-300"
+                  style={{
+                    transform: `translate(-50%, -50%) scale(${hovered === p.id ? 1.3 : 1})`,
+                  }}
+                >
+                  <PlanetVisual p={p} size={p.size * 2} />
+                  {p.hasRing && <SaturnRing p={p} planetSize={p.size * 2} />}
 
-                {hovered === p.id && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 whitespace-nowrap pointer-events-none">
-                    <div className="font-display text-sm text-white">{p.name}</div>
-                    <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-white/50 text-center mt-0.5">{p.year}</div>
-                  </div>
-                )}
-              </button>
+                  {hovered === p.id && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 whitespace-nowrap pointer-events-none">
+                      <div className="font-display text-sm text-white">{p.name}</div>
+                      <div className="font-mono text-[9px] tracking-[0.3em] uppercase text-white/50 text-center mt-0.5">{p.year}</div>
+                    </div>
+                  )}
+                </button>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Project panel with large spinning planet preview */}
+      {/* Project panel — bigger spinning planet preview with moons */}
       {proj && (
         <div className="fixed inset-0 z-40 flex items-center justify-center p-4 md:p-8" style={{ pointerEvents: "none" }}>
-          {/* dim backdrop */}
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-md animate-fade-up"
+            className="absolute inset-0 bg-black/75 backdrop-blur-md animate-fade-up"
             style={{ pointerEvents: "auto" }}
             onClick={() => setSelected(null)}
           />
           <div
-            className="relative w-full max-w-5xl grid md:grid-cols-[1fr_1.1fr] gap-0 md:gap-4 items-center animate-fade-up"
+            className="relative w-full max-w-6xl grid md:grid-cols-[1.1fr_1.1fr] gap-6 md:gap-10 items-center animate-fade-up"
             style={{ pointerEvents: "auto" }}
           >
-            {/* Planet preview */}
-            <div className="hidden md:flex items-center justify-center py-10 relative">
+            {/* Planet preview - large */}
+            <div className="hidden md:flex items-center justify-center py-10 relative h-[560px]">
               <div
                 className="absolute rounded-full animate-pulse-glow"
                 style={{
-                  width: 320, height: 320,
-                  background: `radial-gradient(circle, ${proj.color}44, transparent 65%)`,
-                  filter: "blur(28px)"
+                  width: 520, height: 520,
+                  background: `radial-gradient(circle, ${proj.color}33 0%, ${proj.color}11 40%, transparent 70%)`,
+                  filter: "blur(40px)"
                 }}
               />
               <div className="relative">
-                <PlanetVisual p={proj} size={240} animated />
-                {proj.hasRing && (
-                  <div
-                    className="absolute top-1/2 left-1/2 pointer-events-none"
-                    style={{
-                      width: 480,
-                      height: 140,
-                      transform: "translate(-50%, -50%) rotate(-22deg)",
-                      borderRadius: "50%",
-                      background: `linear-gradient(90deg, transparent 0%, ${proj.color}aa 20%, ${proj.color} 50%, ${proj.color}aa 80%, transparent 100%)`,
-                      opacity: 0.7,
-                      maskImage: "radial-gradient(ellipse at center, transparent 32%, black 34%)",
-                      WebkitMaskImage: "radial-gradient(ellipse at center, transparent 32%, black 34%)"
-                    }}
-                  />
-                )}
+                {/* Moons orbit the centered preview planet */}
+                <div className="absolute top-1/2 left-1/2">
+                  <Moons planet={proj} planetSize={340} paused={false} scale={0.7} />
+                </div>
+                <PlanetVisual p={proj} size={340} animated />
+                {proj.hasRing && <SaturnRing p={proj} planetSize={340} />}
               </div>
             </div>
 
@@ -275,18 +328,21 @@ const SolarSystem = () => {
                 <X size={16} />
               </button>
 
-              {/* Mobile planet preview */}
               <div className="md:hidden flex justify-center mb-6">
-                <PlanetVisual p={proj} size={120} animated />
+                <PlanetVisual p={proj} size={140} animated />
               </div>
 
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-4 flex-wrap">
                 <div className="font-mono text-[10px] tracking-[0.3em] uppercase text-amber-200/70">
                   Planet · {proj.id}
                 </div>
                 <div className="w-6 h-px bg-white/20" />
                 <div className="font-mono text-[10px] tracking-widest uppercase text-white/40">
                   {proj.year}
+                </div>
+                <div className="w-6 h-px bg-white/20" />
+                <div className="font-mono text-[10px] tracking-widest uppercase text-white/40">
+                  {(proj.moons || []).length} {((proj.moons || []).length === 1 ? "moon" : "moons")}
                 </div>
               </div>
 
