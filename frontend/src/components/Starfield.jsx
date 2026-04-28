@@ -26,16 +26,24 @@ const Starfield = ({ density = 1 }) => {
 
   /* -------- Scroll progress 0 (hero) → 1 (past About) -------- */
   useEffect(() => {
-    const onScroll = () => {
+    let ticking = false;
+    const update = () => {
       const vh = window.innerHeight;
-      const start = vh * 0.6;          // begin transition mid-hero
-      const end = vh * 3.0;            // fully inside Milky Way after about ~3 viewports
+      const start = vh * 0.6;
+      const end = vh * 3.0;
       const y = window.scrollY;
       const p = Math.min(1, Math.max(0, (y - start) / (end - start)));
       setProgress(p);
+      ticking = false;
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
+    update();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
@@ -50,111 +58,129 @@ const Starfield = ({ density = 1 }) => {
     const paint = () => {
       ctx.clearRect(0, 0, w, h);
       const cx = w * 0.5;
-      const cy = h * 0.48;
-      const baseR = Math.min(w, h) * 0.32;
+      const cy = h * 0.50;
+      const baseR = Math.min(w, h) * 0.30;
 
-      /* === 1. Extended outer halo (very faint, reaches ~2.6x baseR) ===
-         Real Helix has a huge faint outer halo of red/pink gas. */
-      const haloOuter = ctx.createRadialGradient(cx, cy, baseR * 1.4, cx, cy, baseR * 2.8);
-      haloOuter.addColorStop(0.0, "rgba(180, 70, 80, 0.0)");
-      haloOuter.addColorStop(0.35, "rgba(160, 60, 80, 0.06)");
-      haloOuter.addColorStop(0.7, "rgba(120, 50, 80, 0.04)");
-      haloOuter.addColorStop(1.0, "rgba(0,0,0,0)");
-      ctx.fillStyle = haloOuter;
+      /* === 1. Background — deep brownish/red dust haze ===
+         Real Helix surrounds itself with a wide, faint, brown-red dust cloud. */
+      const haze = ctx.createRadialGradient(cx, cy, baseR * 0.4, cx, cy, baseR * 3.2);
+      haze.addColorStop(0.00, "rgba(60, 25, 25, 0.0)");
+      haze.addColorStop(0.20, "rgba(80, 30, 30, 0.18)");
+      haze.addColorStop(0.45, "rgba(70, 25, 30, 0.12)");
+      haze.addColorStop(0.75, "rgba(50, 20, 25, 0.06)");
+      haze.addColorStop(1.00, "rgba(0,0,0,0)");
+      ctx.fillStyle = haze;
       ctx.fillRect(0, 0, w, h);
 
-      /* === 2. Outer ring — multi-pass gauzy red/amber gas ===
-         Several overlapping gradients with slightly different inner/outer radii
-         and rotations create the wispy organic texture of the real nebula. */
+      /* === 2. Outer faint amber halo (the "outer envelope" around the iris) === */
+      const halo = ctx.createRadialGradient(cx, cy, baseR * 1.3, cx, cy, baseR * 2.2);
+      halo.addColorStop(0.0, "rgba(140, 70, 40, 0.0)");
+      halo.addColorStop(0.4, "rgba(170, 90, 50, 0.18)");
+      halo.addColorStop(0.8, "rgba(130, 60, 50, 0.07)");
+      halo.addColorStop(1.0, "rgba(0,0,0,0)");
+      ctx.fillStyle = halo;
+      ctx.fillRect(0, 0, w, h);
+
+      /* === 3. THE FIBER FIELD — the iconic radial filament texture ===
+         Thousands of thin radial strokes from the inner edge outward, with
+         varied lengths, brightness, and colors creating the "iris fur" look. */
       ctx.save();
       ctx.globalCompositeOperation = "screen";
-      const outerPasses = [
-        { ir: 1.00, or: 1.55, tilt: 0.04, alpha: 1.0,
-          stops: [
-            [0.0, "rgba(255,90,50,0.0)"],
-            [0.18, "rgba(255,120,70,0.55)"],
-            [0.45, "rgba(255,90,80,0.65)"],
-            [0.72, "rgba(220,60,90,0.40)"],
-            [0.92, "rgba(140,40,80,0.18)"],
-            [1.0, "rgba(0,0,0,0)"]
-          ]
-        },
-        { ir: 1.05, or: 1.45, tilt: 0.02, alpha: 0.7,
-          stops: [
-            [0.0, "rgba(255,160,90,0.0)"],
-            [0.3, "rgba(255,170,110,0.45)"],
-            [0.65, "rgba(255,120,70,0.35)"],
-            [1.0, "rgba(0,0,0,0)"]
-          ]
-        },
-        { ir: 0.96, or: 1.62, tilt: -0.05, alpha: 0.6,
-          stops: [
-            [0.0, "rgba(180,40,60,0.0)"],
-            [0.4, "rgba(220,70,80,0.30)"],
-            [0.8, "rgba(160,50,80,0.20)"],
-            [1.0, "rgba(0,0,0,0)"]
-          ]
+      const fiberCount = 4200;
+      for (let i = 0; i < fiberCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+
+        // Inner edge of the iris (where fibers start)
+        const r1 = baseR * (0.55 + Math.random() * 0.10);
+        // Length varies — most fibers are short, a few long
+        const lenRoll = Math.random();
+        const length = baseR * (lenRoll < 0.7 ? (0.20 + Math.random() * 0.35) : (0.55 + Math.random() * 0.55));
+        const r2 = r1 + length;
+
+        const x1 = cx + cosA * r1;
+        const y1 = cy + sinA * r1 * 0.94;
+        const x2 = cx + cosA * r2;
+        const y2 = cy + sinA * r2 * 0.94;
+
+        // Color zones: bright copper-amber near inner edge → deeper red-orange outer
+        // → fading red-brown at outer halo
+        const tRel = (r1 - baseR * 0.55) / (baseR * 0.10) + (r2 - r1) / (baseR * 0.9);
+        let hue, sat, light, alpha;
+        const dist = (r1 + r2) / 2;
+        if (dist < baseR * 0.85) {
+          // Bright inner amber/gold
+          hue = 28 + Math.random() * 18;       // 28-46 (orange-gold)
+          sat = 78 + Math.random() * 18;
+          light = 52 + Math.random() * 20;
+          alpha = 0.55 + Math.random() * 0.35;
+        } else if (dist < baseR * 1.25) {
+          // Mid-band copper/orange
+          hue = 18 + Math.random() * 16;
+          sat = 70 + Math.random() * 15;
+          light = 38 + Math.random() * 18;
+          alpha = 0.40 + Math.random() * 0.35;
+        } else {
+          // Outer red-brown
+          hue = 5 + Math.random() * 18;
+          sat = 55 + Math.random() * 15;
+          light = 26 + Math.random() * 16;
+          alpha = 0.20 + Math.random() * 0.25;
         }
-      ];
-      for (const p of outerPasses) {
-        paintGauzyRing(ctx, cx, cy, {
-          innerR: baseR * p.ir, outerR: baseR * p.or,
-          flatness: 0.93, rot: p.tilt,
-          stops: p.stops, alpha: p.alpha
-        });
+
+        const color = `hsla(${hue.toFixed(0)}, ${sat.toFixed(0)}%, ${light.toFixed(0)}%, ${alpha.toFixed(2)})`;
+
+        // Each fiber tapers — use a linear gradient
+        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, color.replace(/,[\s\d.]+\)$/, ", 0)"));
+
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = (0.4 + Math.random() * 0.9) * dpr;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
       }
       ctx.restore();
 
-      /* === 3. Inner ring — turquoise / cyan / blue-green
-         (ionized oxygen — the iconic Helix color) === */
+      /* === 4. Bright bloom on the inner edge (where fibers concentrate) === */
       ctx.save();
       ctx.globalCompositeOperation = "screen";
-      const innerPasses = [
-        { ir: 0.62, or: 1.04, tilt: 0.03, alpha: 1.0,
-          stops: [
-            [0.0, "rgba(60,200,200,0.0)"],
-            [0.2, "rgba(110,230,225,0.55)"],
-            [0.55, "rgba(70,210,230,0.65)"],
-            [0.85, "rgba(50,140,200,0.35)"],
-            [1.0, "rgba(0,0,0,0)"]
-          ]
-        },
-        { ir: 0.70, or: 0.98, tilt: -0.02, alpha: 0.65,
-          stops: [
-            [0.0, "rgba(160,240,230,0.0)"],
-            [0.35, "rgba(180,250,235,0.45)"],
-            [0.7, "rgba(120,230,220,0.35)"],
-            [1.0, "rgba(0,0,0,0)"]
-          ]
-        },
-        { ir: 0.58, or: 1.06, tilt: 0.06, alpha: 0.55,
-          stops: [
-            [0.0, "rgba(70,150,180,0.0)"],
-            [0.5, "rgba(90,180,200,0.30)"],
-            [1.0, "rgba(0,0,0,0)"]
-          ]
-        }
-      ];
-      for (const p of innerPasses) {
-        paintGauzyRing(ctx, cx, cy, {
-          innerR: baseR * p.ir, outerR: baseR * p.or,
-          flatness: 0.93, rot: p.tilt,
-          stops: p.stops, alpha: p.alpha
-        });
-      }
+      const bloom = ctx.createRadialGradient(cx, cy, baseR * 0.55, cx, cy, baseR * 0.85);
+      bloom.addColorStop(0.0, "rgba(255, 180, 100, 0.0)");
+      bloom.addColorStop(0.4, "rgba(255, 170, 90, 0.30)");
+      bloom.addColorStop(0.8, "rgba(220, 130, 70, 0.18)");
+      bloom.addColorStop(1.0, "rgba(0,0,0,0)");
+      ctx.fillStyle = bloom;
+      ctx.fillRect(0, 0, w, h);
       ctx.restore();
 
-      /* === 4. Inner iris wisps (faint cyan inside the inner ring) === */
+      /* === 5. Dark navy iris (the "pupil") — overlay that darkens the center
+         and gives the inner edge of fibers a sharp boundary. */
+      const iris = ctx.createRadialGradient(cx, cy, 0, cx, cy, baseR * 0.62);
+      iris.addColorStop(0.0, "rgba(4, 8, 22, 1)");
+      iris.addColorStop(0.55, "rgba(6, 10, 28, 0.95)");
+      iris.addColorStop(0.85, "rgba(6, 10, 28, 0.45)");
+      iris.addColorStop(1.0, "rgba(6, 10, 28, 0)");
+      ctx.fillStyle = iris;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, baseR * 0.62, baseR * 0.62 * 0.94, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      /* === 6. Faint blue wisps inside the iris (subtle ionized oxygen glow) === */
       ctx.save();
       ctx.globalCompositeOperation = "screen";
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 18; i++) {
         const a = Math.random() * Math.PI * 2;
-        const r = baseR * (0.1 + Math.random() * 0.5);
+        const r = baseR * (0.05 + Math.random() * 0.45);
         const x = cx + Math.cos(a) * r;
         const y = cy + Math.sin(a) * r * 0.92;
-        const wr = baseR * (0.05 + Math.random() * 0.1);
+        const wr = baseR * (0.06 + Math.random() * 0.10);
         const g = ctx.createRadialGradient(x, y, 0, x, y, wr);
-        g.addColorStop(0, "rgba(120, 200, 220, 0.18)");
+        g.addColorStop(0, "rgba(70, 110, 180, 0.18)");
         g.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -163,171 +189,36 @@ const Starfield = ({ density = 1 }) => {
       }
       ctx.restore();
 
-      /* === 5. Filamentary streaks — thin radial wisps crossing the rings === */
-      ctx.save();
-      ctx.globalCompositeOperation = "screen";
-      const filamentCount = 75;
-      for (let i = 0; i < filamentCount; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const r1 = baseR * (0.55 + Math.random() * 0.15);
-        const r2 = baseR * (1.2 + Math.random() * 0.4);
-        const x1 = cx + Math.cos(a) * r1;
-        const y1 = cy + Math.sin(a) * r1 * 0.93;
-        const x2 = cx + Math.cos(a) * r2;
-        const y2 = cy + Math.sin(a) * r2 * 0.93;
-        const isInner = Math.random() < 0.45;
-        const c1 = isInner ? "rgba(120, 230, 230, 0.45)" : "rgba(255, 150, 100, 0.4)";
-        const lg = ctx.createLinearGradient(x1, y1, x2, y2);
-        lg.addColorStop(0, "rgba(0,0,0,0)");
-        lg.addColorStop(0.4, c1);
-        lg.addColorStop(0.8, c1.replace(/[\d.]+\)$/, "0.18)"));
-        lg.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.strokeStyle = lg;
-        ctx.lineWidth = (0.6 + Math.random() * 1.2) * dpr;
+      /* === 7. Bright BLUE-WHITE field stars with diffraction-spike crosses ===
+         These are the prominent foreground stars in the reference photo. */
+      const fieldStars = generateFieldStars(w, h, cx, cy, baseR);
+      // Faint background stars first
+      for (const s of fieldStars.faint) {
+        ctx.fillStyle = `rgba(220, 230, 255, ${s.a})`;
         ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        // Slight curve via control point
-        const cxp = (x1 + x2) / 2 + (Math.random() - 0.5) * 12;
-        const cyp = (y1 + y2) / 2 + (Math.random() - 0.5) * 12;
-        ctx.quadraticCurveTo(cxp, cyp, x2, y2);
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      /* === 6. Cometary knots — the iconic Helix feature ===
-         Thousands of bullet-shaped clumps with bright heads pointing toward
-         the central star and gas tails radiating outward. */
-      const knotCount = 280;
-      for (let i = 0; i < knotCount; i++) {
-        const a = Math.random() * Math.PI * 2;
-        // Distribute mostly in the rings
-        const zoneRoll = Math.random();
-        let r;
-        if (zoneRoll < 0.4)         r = baseR * (0.62 + Math.random() * 0.42); // inner ring
-        else if (zoneRoll < 0.85)   r = baseR * (1.05 + Math.random() * 0.55); // outer ring
-        else                        r = baseR * (1.6 + Math.random() * 0.6);   // outer halo
-        const cosA = Math.cos(a);
-        const sinA = Math.sin(a);
-        const x = cx + cosA * r;
-        const y = cy + sinA * r * 0.93;
-
-        const inInner = r < baseR * 1.04;
-        const inHalo = r > baseR * 1.6;
-        const colHead = inInner
-          ? `hsla(${175 + Math.random() * 25}, 75%, ${75 + Math.random() * 15}%, 1)`
-          : (inHalo
-            ? `hsla(${355 + Math.random() * 15}, 75%, 60%, 1)`
-            : `hsla(${15 + Math.random() * 25}, 85%, ${65 + Math.random() * 15}%, 1)`);
-
-        const headSize = (0.35 + Math.random() * 0.85) * dpr;
-
-        // Tail — radiating outward from center, length scaled with size
-        const tailLen = (4 + Math.random() * 16) * dpr;
-        const tailX = x + cosA * tailLen;
-        const tailY = y + sinA * tailLen * 0.93;
-
-        // Tail gradient
-        ctx.save();
-        const tg = ctx.createLinearGradient(x, y, tailX, tailY);
-        tg.addColorStop(0, fadeRgba(colHead, 0.55));
-        tg.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.strokeStyle = tg;
-        ctx.lineWidth = headSize * 1.1;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(tailX, tailY);
-        ctx.stroke();
-        ctx.restore();
-
-        // Head bloom
-        const hg = ctx.createRadialGradient(x, y, 0, x, y, headSize * 4);
-        hg.addColorStop(0, fadeRgba(colHead, 0.85));
-        hg.addColorStop(0.5, fadeRgba(colHead, 0.30));
-        hg.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = hg;
-        ctx.beginPath();
-        ctx.arc(x, y, headSize * 4, 0, Math.PI * 2);
-        ctx.fill();
-        // Solid bright head
-        ctx.fillStyle = colHead;
-        ctx.beginPath();
-        ctx.arc(x, y, headSize, 0, Math.PI * 2);
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
         ctx.fill();
       }
-
-      /* === 7. Dark dust silhouettes (subtle absorption inside the iris) === */
-      ctx.save();
-      ctx.globalCompositeOperation = "multiply";
-      for (let i = 0; i < 6; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const r = baseR * (0.25 + Math.random() * 0.35);
-        const x = cx + Math.cos(a) * r;
-        const y = cy + Math.sin(a) * r * 0.93;
-        const dr = baseR * (0.05 + Math.random() * 0.08);
-        const g = ctx.createRadialGradient(x, y, 0, x, y, dr);
-        g.addColorStop(0, "rgba(8, 4, 20, 0.4)");
-        g.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.ellipse(x, y, dr, dr * 0.5, a, 0, Math.PI * 2);
-        ctx.fill();
+      // Prominent bright stars with cross spikes
+      for (const s of fieldStars.bright) {
+        drawDiffractionStar(ctx, s, dpr);
       }
-      ctx.restore();
 
-      /* === 8. Central white-dwarf star with bluish tint and diffraction spikes === */
-      const starR = baseR * 0.022;
-      // Outer halo (large, bluish)
-      const starHalo = ctx.createRadialGradient(cx, cy, 0, cx, cy, starR * 16);
-      starHalo.addColorStop(0, "rgba(255,255,255,0.95)");
-      starHalo.addColorStop(0.15, "rgba(220,235,255,0.55)");
-      starHalo.addColorStop(0.5, "rgba(140,200,255,0.18)");
+      /* === 8. Central white-dwarf star (small, with subtle bluish bloom) === */
+      const starR = baseR * 0.018;
+      const starHalo = ctx.createRadialGradient(cx, cy, 0, cx, cy, starR * 14);
+      starHalo.addColorStop(0, "rgba(255,255,255,0.9)");
+      starHalo.addColorStop(0.18, "rgba(220,235,255,0.45)");
+      starHalo.addColorStop(0.55, "rgba(140,200,255,0.15)");
       starHalo.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = starHalo;
       ctx.beginPath();
-      ctx.arc(cx, cy, starR * 16, 0, Math.PI * 2);
+      ctx.arc(cx, cy, starR * 14, 0, Math.PI * 2);
       ctx.fill();
-
-      // Diffraction spikes
-      ctx.save();
-      ctx.translate(cx, cy);
-      for (const angle of [0, Math.PI / 2, Math.PI / 4, -Math.PI / 4]) {
-        const spikeLen = baseR * (angle === 0 || angle === Math.PI / 2 ? 0.85 : 0.55);
-        const grd = ctx.createLinearGradient(-spikeLen, 0, spikeLen, 0);
-        grd.addColorStop(0, "rgba(255,255,255,0)");
-        grd.addColorStop(0.45, "rgba(220,235,255,0.4)");
-        grd.addColorStop(0.5, "rgba(255,255,255,0.7)");
-        grd.addColorStop(0.55, "rgba(220,235,255,0.4)");
-        grd.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.save();
-        ctx.rotate(angle);
-        ctx.fillStyle = grd;
-        ctx.fillRect(-spikeLen, -starR * 0.5, spikeLen * 2, starR * 1.0);
-        ctx.restore();
-      }
-      ctx.restore();
-
-      // Hot core
       ctx.fillStyle = "rgba(255,255,255,1)";
       ctx.beginPath();
-      ctx.arc(cx, cy, starR * 1.5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, starR * 1.4, 0, Math.PI * 2);
       ctx.fill();
-
-      /* === 9. Sparse field stars in the surrounding deep space === */
-      for (let i = 0; i < 220; i++) {
-        const x = Math.random() * w;
-        const y = Math.random() * h;
-        // Avoid drawing stars on top of the bright nebula center
-        const dx = x - cx, dy = y - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < baseR * 0.55) continue;
-        const r = (0.3 + Math.random() * 0.9) * dpr;
-        const a = 0.25 + Math.random() * 0.5;
-        ctx.fillStyle = `rgba(220, 220, 240, ${a})`;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
     };
 
     const resize = () => {
@@ -517,7 +408,18 @@ const Starfield = ({ density = 1 }) => {
     window.addEventListener("resize", onResize);
 
     let lastProgress = 0;
+    let active = !document.hidden;
+    const onVisibility = () => {
+      active = !document.hidden;
+      if (active && !rafRef.current) draw();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     const draw = () => {
+      if (!active) {
+        rafRef.current = null;
+        return;
+      }
       mouseRef.current.x += (mouseRef.current.tx - mouseRef.current.x) * 0.06;
       mouseRef.current.y += (mouseRef.current.ty - mouseRef.current.y) * 0.06;
       const mx = mouseRef.current.x || w / 2;
@@ -589,6 +491,7 @@ const Starfield = ({ density = 1 }) => {
 
     return () => {
       cancelAnimationFrame(rafRef.current);
+      document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("mousemove", onMouse);
       window.removeEventListener("resize", onResize);
     };
@@ -629,73 +532,94 @@ const Starfield = ({ density = 1 }) => {
 
 /* =============== HELPERS =============== */
 
-// Paints a gauzy ring band by stroking many ellipses at fractional radii,
-// each with the right color sampled from the gradient stops.
-function paintGauzyRing(ctx, cx, cy, opts) {
-  const { innerR, outerR, flatness, rot, stops, alpha = 1 } = opts;
+/* Generate field stars: a dense layer of faint, plus 16-22 bright ones with cross spikes.
+   Bright stars are kept away from the nebula center to mimic the reference photo. */
+function generateFieldStars(w, h, cx, cy, baseR) {
+  const dpr = window.devicePixelRatio || 1;
+  const faint = [];
+  for (let i = 0; i < 380; i++) {
+    const x = Math.random() * w;
+    const y = Math.random() * h;
+    const dx = x - cx, dy = y - cy;
+    if (dx * dx + dy * dy < (baseR * 0.5) ** 2) continue;
+    faint.push({
+      x, y,
+      r: (0.3 + Math.random() * 0.9) * dpr,
+      a: 0.25 + Math.random() * 0.55
+    });
+  }
+
+  const bright = [];
+  // Try placing bright stars in the corners / outer regions
+  const targetBright = 18;
+  let tries = 0;
+  while (bright.length < targetBright && tries < 200) {
+    tries++;
+    const x = Math.random() * w;
+    const y = Math.random() * h;
+    const dx = x - cx, dy = y - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < baseR * 1.3) continue;
+    // Spread out — don't place near other bright stars
+    let tooClose = false;
+    for (const s of bright) {
+      if ((s.x - x) ** 2 + (s.y - y) ** 2 < (90 * dpr) ** 2) { tooClose = true; break; }
+    }
+    if (tooClose) continue;
+    const size = (1.2 + Math.random() * 2.0) * dpr;
+    bright.push({
+      x, y,
+      r: size,
+      spikeLen: size * (8 + Math.random() * 6),
+      tint: Math.random() < 0.85 ? "210, 230, 255" : "255, 245, 220"
+    });
+  }
+  return { faint, bright };
+}
+
+/* Bright star with bloom + 4-pointed cross diffraction spikes */
+function drawDiffractionStar(ctx, s, dpr) {
+  const { x, y, r, spikeLen, tint } = s;
+
+  // Outer halo
+  const halo = ctx.createRadialGradient(x, y, 0, x, y, r * 8);
+  halo.addColorStop(0, `rgba(${tint}, 0.95)`);
+  halo.addColorStop(0.25, `rgba(${tint}, 0.45)`);
+  halo.addColorStop(0.65, `rgba(${tint}, 0.12)`);
+  halo.addColorStop(1, `rgba(${tint}, 0)`);
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cross spikes
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rot);
-  for (let r = innerR; r <= outerR; r += 1.2) {
-    const t = (r - innerR) / (outerR - innerR);
-    const color = sampleStops(stops, t);
-    // Multiply alpha by pass alpha
-    const c = scaleAlpha(color, alpha);
-    ctx.strokeStyle = c;
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    // Slight asymmetry: vary the y radius along angular position via dashed pattern? Keep simple ellipse.
-    ctx.ellipse(0, 0, r, r * flatness, 0, 0, Math.PI * 2);
-    ctx.stroke();
+  ctx.translate(x, y);
+  for (const angle of [0, Math.PI / 2]) {
+    const grd = ctx.createLinearGradient(-spikeLen, 0, spikeLen, 0);
+    grd.addColorStop(0, `rgba(${tint}, 0)`);
+    grd.addColorStop(0.42, `rgba(${tint}, 0.35)`);
+    grd.addColorStop(0.5, `rgba(${tint}, 0.85)`);
+    grd.addColorStop(0.58, `rgba(${tint}, 0.35)`);
+    grd.addColorStop(1, `rgba(${tint}, 0)`);
+    ctx.save();
+    ctx.rotate(angle);
+    ctx.fillStyle = grd;
+    ctx.fillRect(-spikeLen, -r * 0.35, spikeLen * 2, r * 0.7);
+    ctx.restore();
   }
   ctx.restore();
-}
 
-function scaleAlpha(rgba, k) {
-  const p = parseRgba(rgba);
-  return `rgba(${p[0]},${p[1]},${p[2]},${(p[3] * k).toFixed(3)})`;
-}
-
-// Convert any rgba/hsla color to the same color but with custom alpha.
-function fadeRgba(color, alpha) {
-  if (color.startsWith("hsla") || color.startsWith("hsl(")) {
-    // Strip wrapper, replace last component
-    const inner = color.replace(/^hsla?\(/, "").replace(/\)$/, "");
-    const parts = inner.split(",");
-    if (parts.length === 4) parts[3] = ` ${alpha}`;
-    else parts.push(` ${alpha}`);
-    return `hsla(${parts.join(",")})`;
-  }
-  const p = parseRgba(color);
-  return `rgba(${p[0]},${p[1]},${p[2]},${alpha})`;
-}
-
-function sampleStops(stops, t) {
-  // Linearly interpolate between rgba color stops [pos, "rgba(...)"]
-  for (let i = 0; i < stops.length - 1; i++) {
-    const [p0, c0] = stops[i];
-    const [p1, c1] = stops[i + 1];
-    if (t >= p0 && t <= p1) {
-      const k = (t - p0) / (p1 - p0 || 1);
-      return mixRgba(c0, c1, k);
-    }
-  }
-  return stops[stops.length - 1][1];
-}
-
-function mixRgba(a, b, k) {
-  const pa = parseRgba(a);
-  const pb = parseRgba(b);
-  const m = (x, y) => Math.round(x + (y - x) * k);
-  const ma = pa[3] + (pb[3] - pa[3]) * k;
-  return `rgba(${m(pa[0], pb[0])},${m(pa[1], pb[1])},${m(pa[2], pb[2])},${ma})`;
-}
-
-function parseRgba(s) {
-  const m = s.match(/rgba?\(([^)]+)\)/);
-  if (!m) return [0, 0, 0, 0];
-  const parts = m[1].split(",").map((x) => parseFloat(x.trim()));
-  return [parts[0] || 0, parts[1] || 0, parts[2] || 0, parts[3] ?? 1];
+  // Hot core
+  ctx.fillStyle = `rgba(${tint}, 1)`;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  // Inner pure white pip
+  ctx.fillStyle = "rgba(255,255,255,1)";
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.45, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawAsteroid(ctx, a, progress) {
@@ -742,16 +666,6 @@ function drawAsteroid(ctx, a, progress) {
   ctx.fill();
 
   ctx.restore();
-}
-
-function hexA(hex, alpha) {
-  const h = hex.replace("#", "");
-  const norm = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
-  const bigint = parseInt(norm, 16);
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 export default Starfield;
